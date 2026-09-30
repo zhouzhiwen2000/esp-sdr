@@ -1,0 +1,15 @@
+{
+  "source_commit": "e60568437df0fac3a38764fb91eb2ed6d8db80c6",
+  "git_dependencies": [
+    {
+      "path": "components/esp-open-phy-lib",
+      "url": "https://github.com/ESPARGOS/esp-open-phy-lib.git",
+      "commit": "2515d0891440cd63cde210dba1455d854f2698f4"
+    },
+    {
+      "path": "components/esp32c61-phy-regs",
+      "url": "https://github.com/ESPARGOS/esp32c61-phy-regs.git",
+      "commit": "406655303a2ac8e0528177c22c0b49890bff7cc1"
+    }
+  ]
+}

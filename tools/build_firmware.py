@@ -48,7 +48,7 @@ def main():
                 '-DSDKCONFIG=' + str(build / 'sdkconfig'),
                 '-DSDKCONFIG_DEFAULTS=' + str(ROOT / ('sdkconfig.defaults.' + profile['target'])),
                 '-DSAMPLE_RATE_PROBE=OFF', '-DFILTER_REGISTER_PROBE=OFF', '-DS3_RF_PROBE=OFF',
-                '-DC5_TUNE_PROBE=OFF', '-DS2_RF_PROBE=OFF', 'build']
+                '-DC5_TUNE_PROBE=OFF', '-DC5_REPLAY_PROBE=OFF', '-DS2_RF_PROBE=OFF', 'build']
     subprocess.run(command, env=env, check=True)
     export(build, output, profile['id'], profile['label'], args.version, profile['allow_larger_flash'])
     provenance = {'profile': profile['id'], 'version': args.version, 'idf_commit': revision}

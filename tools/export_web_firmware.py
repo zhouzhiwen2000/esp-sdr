@@ -25,7 +25,7 @@ def export(build, output, board, label, version, allow_larger_flash=False):
         raise ValueError('Board ID must contain only letters, numbers, dots, underscores or hyphens')
     cache = (build / 'CMakeCache.txt').read_text()
     for line in cache.splitlines():
-        if re.match(r'(SAMPLE_RATE_PROBE|FILTER_REGISTER_PROBE|S3_RF_PROBE|S2_RF_PROBE|C5_TUNE_PROBE):', line):
+        if re.match(r'(SAMPLE_RATE_PROBE|FILTER_REGISTER_PROBE|S3_RF_PROBE|S2_RF_PROBE|C5_TUNE_PROBE|C5_REPLAY_PROBE):', line):
             if line.rsplit('=', 1)[-1].upper() not in ('OFF', 'FALSE', '0', 'NO', ''):
                 raise ValueError('Refusing to export diagnostic probe firmware')
     config = json.loads((build / 'config/sdkconfig.json').read_text())

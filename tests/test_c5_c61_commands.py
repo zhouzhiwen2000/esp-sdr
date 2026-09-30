@@ -35,6 +35,7 @@ static char response[256];
 static int burst_serial_port(void) { return 1; }
 static unsigned burst_serial_baud(void) { return 921600; }
 static void reply(const char *s) { snprintf(response,sizeof(response),"%s",s); }
+static bool tx_command(const char *s) { return false; }
 static bool gain_command(const char *s) { return false; }
 static unsigned gain_max(void) { return 84; }
 #include "burst_limits.h"
@@ -66,6 +67,11 @@ int main(void) {
  command("RANGE?");assert(!strcmp(response,"RANGE 100 6000 1\n"));
  for(unsigned f=100;f<=6000;f++){char cmd[32];snprintf(cmd,sizeof(cmd),"FREQ %u",f);command(cmd);assert(!strcmp(response,"OK\n") && frequency_mhz==f);}
  command("CAPS");assert(strstr(response,"DUALSERIAL"));
+#if CONFIG_IDF_TARGET_ESP32C5
+ assert(strstr(response," TX REPLAY CW"));
+#else
+ assert(!strstr(response,"REPLAY") && !strstr(response,"CW"));
+#endif
  command("TRANSPORT?");assert(!strcmp(response,"TRANSPORT UART 921600\n"));
  command("LIMITS?");
  assert(strstr(response,CONFIG_IDF_TARGET_ESP32C61?"[13,54,1,0]":"[11,48,1,0]"));
@@ -76,7 +82,11 @@ int main(void) {
  command("RXRUN 256 3 2 20");assert(captures==4 && !strcmp(response,"END\n"));
  const char *bad[]={"CAP16 16381 0","CAP20 255 0","CAP20 16380 6","CAP20 256 0 junk",
  "RXRUN 256 0 0 20","RXRUN 256 0 1001 20","RXRUN 256 0 2 32","FREQ 5180 junk",
- "FREQ 2399.5","GAIN AUTO","TX20 256 1000000 0","CW START","REPLAY20 256 40000000 0"};
+ "FREQ 2399.5","GAIN AUTO"
+#if CONFIG_IDF_TARGET_ESP32C61
+ ,"TX20 256 1000000 0","CW START","REPLAY20 256 40000000 0"
+#endif
+ };
  for(unsigned i=0;i<sizeof(bad)/sizeof(bad[0]);i++){command(bad[i]);assert(!strcmp(response,"ERR command\n"));}
  assert(captures==4);
  command("FREQ 2412");assert(frequency_mhz==2412 && rx_ready);

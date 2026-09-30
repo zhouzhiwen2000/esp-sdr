@@ -33,3 +33,6 @@ Thumbs.db
 
 # CI SDK checkout
 /.esp-idf/
+
+# Local validation toolchains
+/.idf-tools/

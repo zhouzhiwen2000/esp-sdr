@@ -14,3 +14,6 @@ int burst_serial_poll_line(char *line, size_t capacity);
 burst_serial_port_t burst_serial_port(void);
 unsigned burst_serial_baud(void);
 bool burst_serial_send(const void *data, size_t size);
+
+/* Read an exact binary payload from the command owner, with a bounded deadline. */
+bool burst_serial_receive(void *data, size_t size);

@@ -1,0 +1,98 @@
+menu "ESP-SDR transport"
+
+    config ESP_SDR_TRANSPORT_ETHERNET
+        bool "Ethernet (HTTP control and UDP IQ)"
+        default y
+        help
+            Use the onboard YT8531 RGMII Ethernet PHY. The board obtains
+            its IPv4 address through DHCP and advertises esp-sdr.local.
+
+    config ESP_SDR_TRANSPORT_USB
+        bool "USB (vendor control and bulk IQ)"
+        default y if IDF_TARGET_ESP32S31
+        help
+            Use the native high-speed USB-OTG device port with the
+            vendor-specific ESP-SDR control and IQ protocol. Ethernet and USB
+            may be enabled together; the most recently started stream owns the
+            shared half-duplex IQ engine.
+
+    config ESP_SDR_S3_UART_ENABLED
+        bool "S3 UART0 I/Q transport"
+        depends on IDF_TARGET_ESP32S3
+        default y
+        help
+            Enable the optional USB-to-UART bridge interface. Disable it to
+            leave the UART GPIOs unused by the application. Native USB remains
+            available in either case.
+
+    config ESP_SDR_S3_UART_BAUD
+        int "S3 UART0 I/Q baud rate"
+        depends on IDF_TARGET_ESP32S3
+        range 115200 3000000
+        default 921600
+        help
+            The burst I/Q protocol is also available on UART0, 8N1, without
+            hardware flow control. The browser baud rate must match this value.
+
+    config ESP_SDR_S3_UART_TX_PIN
+        int "S3 UART0 TX GPIO"
+        depends on IDF_TARGET_ESP32S3
+        range 0 48
+        default 43
+
+    config ESP_SDR_S3_UART_RX_PIN
+        int "S3 UART0 RX GPIO"
+        depends on IDF_TARGET_ESP32S3
+        range 0 48
+        default 44
+
+endmenu
+
+menu "ESP-SDR transmitter"
+
+    config ESP_SDR_S31_TX_PIE_REFILL
+        bool "PIE-accelerated S31 TX replay refill"
+        depends on IDF_TARGET_ESP32S31
+        default y
+        help
+            Use the ESP32-S31 128-bit PIE load/store engine for aligned
+            PSRAM-to-TCM copies, including the first finite replay segment
+            and the fallback path when direct GDMA is unavailable. A
+            PIE-only build shortens replay segments by three samples so every
+            source offset remains 16-byte aligned.
+
+    config ESP_SDR_S31_TX_DIRECT_DMA_REFILL
+        bool "Direct AXI-GDMA S31 TX replay refill"
+        depends on IDF_TARGET_ESP32S31
+        default y
+        help
+            Copy finite replay segments directly from the PSRAM upload into
+            the CPU-owned TCM aperture with AXI GDMA. The replay gate remains
+            closed until the blocking DMA completes. This substantially
+            reduces, but cannot eliminate, inter-segment RF gaps.
+
+    config ESP_SDR_S31_TX_PIPELINED_REFILL
+        bool "DMA-prefetch segmented S31 TX replay"
+        depends on IDF_TARGET_ESP32S31
+        default n
+        help
+            Prefetch the next finite-burst segment from PSRAM into internal
+            SRAM with AXI GDMA while the modem transmits the current segment.
+            This reduces the unavoidable CPU-owned aperture refill gap.
+
+endmenu
+
+menu "ESP-SDR receiver"
+
+    config ESP_SDR_S31_CONTINUOUS_REAL_IF
+        bool "Lossless continuous S31 PARLIO receiver"
+        depends on IDF_TARGET_ESP32S31
+        default y
+        help
+            Capture the live modem diagnostic lanes with PARLIO without CPU
+            access to the modem-owned TCM dump aperture. The normal combined
+            Ethernet/USB image publishes native signed I/Q at 16 MS/s complex
+            on either transport. A USB-only compatibility build retains the
+            older 4 MS/s real-IF capture and 2 MS/s host conversion path.
+
+endmenu

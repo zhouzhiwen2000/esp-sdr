@@ -126,6 +126,7 @@ static char response[256];
 static void reply(const char *fmt,...){va_list a;va_start(a,fmt);vsnprintf(response,sizeof(response),fmt,a);va_end(a);}
 static int burst_serial_port(void){return 1;}
 static unsigned burst_serial_baud(void){return 2000000;}
+static bool tx_command(const char *s) { return false; }
 static bool gain_command(const char *s){return false;}
 static bool limits_command(const char *s){return false;}
 static bool capture(unsigned n,unsigned d,unsigned f){return true;}

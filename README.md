@@ -19,7 +19,9 @@ computer over USB or UART for analysis.
 ![ESP32 radio architecture: an undocumented debug path connects the ADC/DAC to the CPU, bypassing the fixed-function Wi-Fi modem.](docs/sdr-bypass.png)
 
 The diagram shows the hardware's receive and transmit paths; this firmware
-currently implements reception only.
+supports burst reception on the chips below and half-duplex transmission on
+C5/S3. The C61/S31 USB/Ethernet transceiver is available as a
+[separate build](legacy/transceiver/README.md).
 
 [Project overview](https://espargos.net/espsdr/) ·
 [Browser SDR viewer](https://espargos.net/espsdr/app/) ·
@@ -71,6 +73,14 @@ after an incomplete transfer. One client controls the radio at a time;
 `RELEASE` or five seconds of idle time releases it, while other clients
 receive `ERR busy`.
 
+## Transmit
+
+C5/S3 firmware advertises `TX REPLAY CW` in `CAPS`. It supports finite IQ
+transmission (`TX16`, `TX20`, `TXRUN`, `LOOP16`, `LOOP20`), continuous waveform
+replay (`REPLAY16`, `REPLAY20`), and continuous tone (`CW START`). Continuous
+output requires a keepalive within five seconds; `RELEASE` stops it and
+returns ownership. See [payload formats, rates and command sequences](docs/transmit.md).
+
 ## Build and flash
 
 [firmware-targets.json](firmware-targets.json) lists the supported profiles and
@@ -92,18 +102,21 @@ Substitute the target and paths for your chip. S31 also requires `idf.py --previ
 ## Source layout
 
 - `main/targets/<target>/`: chip receiver or adapter, tuning helpers, and the
-  linker guard for its capture SRAM. CMake selects only the requested target.
+  linker guard for its capture SRAM. C5/S3 also include `transmitter.h`.
+  CMake selects only the requested target.
 - `main/families/c5_c6_c61/`: receiver shared by C5, C6, and C61; its `chip.h`
   comes from the selected target directory.
 - `main/common/`: burst serial transport, gain control, limits, and bandwidth
   helpers. The gain-table wrapper is linked only for C61 and S31.
+- `legacy/transceiver/`: standalone C61/S31 USB/Ethernet transceiver project.
 - `main/diagnostics/`: optional register probes, excluded from release exports.
 - `platform/esp32s2/`: pinned ROM USB CDC compatibility component.
 
 The application component and UART configuration stay in `main/`. Target SDK
 defaults stay at the repository root for the build tools and ESP-IDF defaults
-lookup. The firmware uses the burst protocol over UART/native USB; the former
-Ethernet and vendor USB streaming application is no longer included.
+lookup. The root firmware uses the burst protocol over UART/native USB.
+Build the Ethernet and vendor USB streaming application from
+`legacy/transceiver/` with its own SDK, PHY dependencies and board configuration.
 
 Run `python3 -m unittest discover -s tests` for host checks. Build every profile
 with `tools/build_firmware.py` and its pinned SDK before distributing a change;

@@ -7,7 +7,7 @@ import unittest
 
 class ReceiveCommands(unittest.TestCase):
     @unittest.skipUnless(shutil.which('cc'), 'Host C compiler unavailable')
-    def test_rx_commands_and_removed_transmit_commands(self):
+    def test_rx_commands(self):
         source=(Path(__file__).resolve().parents[1]/'main/targets/esp32s3/receiver.c').read_text()
         handler=source[source.index('static void handle_command('):source.index('void app_main(')]
         stub=r'''
@@ -31,6 +31,7 @@ static char response[128];
 static int burst_serial_port(void) { return 1; }
 static unsigned burst_serial_baud(void) { return 2000000; }
 static void reply(const char *s) { snprintf(response,sizeof(response),"%s",s); }
+static bool tx_command(const char *s) { return false; }
 static bool gain_command(const char *s) { return false; }
 static bool limits_command(const char *s) { return false; }
 static bool capture(unsigned n,unsigned divider,unsigned format) { ++captures; last_format=format; return true; }
@@ -42,15 +43,11 @@ static void prepare_rx(void) { rx_ready=true; }
 static void command(const char *s) { char line[128]; snprintf(line,sizeof(line),"%s",s); handle_command(line); }
 int main(void) {
  command("CAPS"); assert(strstr(response,"DUALSERIAL")); assert(strstr(response,"HWAGC"));
- assert(!strstr(response,"REPLAY")); assert(!strstr(response,"CW"));
+ assert(strstr(response,"REPLAY")); assert(strstr(response,"CW"));
  command("TRANSPORT?"); assert(!strcmp(response,"TRANSPORT UART 2000000\n"));
  command("CAP16 16380 0"); assert(captures==1 && last_format==16);
  command("CAP20 16380 6"); assert(captures==2 && last_format==20);
  command("RXRUN 16380 0 2 16"); assert(captures==4 && !strcmp(response,"END\n"));
- const char *removed[]={"TX 256 40000000 0","TX16 256 40000000 0","TX20 256 40000000 0",
- "TXRUN 256 40000000 1 16","LOOP16 256 40000000 1 0","LOOP20 256 40000000 1 0",
- "REPLAY16 256 40000000 0","REPLAY20 256 40000000 0","CW START","CW KEEP","CW STOP"};
- for(unsigned i=0;i<sizeof(removed)/sizeof(removed[0]);i++) { command(removed[i]); assert(!strcmp(response,"ERR command\n")); }
  assert(captures==4);
  command("FREQ 2442"); assert(frequency_mhz==2442 && rx_ready);
  command("LPF 16"); assert(rx_filter==16); command("LPF AUTO"); assert(rx_filter==-1);

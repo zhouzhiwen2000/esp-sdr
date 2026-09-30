@@ -1,0 +1,9 @@
+/build*/
+/sdkconfig
+/sdkconfig.*
+!/sdkconfig.defaults
+!/sdkconfig.defaults.*
+/managed_components/
+/components/esp-open-phy-lib/
+/components/esp32c61-phy-regs/
+/dependencies.lock

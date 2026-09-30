@@ -47,7 +47,7 @@ class FirmwareExport(unittest.TestCase):
         self.assertIsNone(exporter.firmware_build_date(b'not an app'))
 
     def test_probe_firmware_rejected(self):
-        for flag in ['SAMPLE_RATE_PROBE','FILTER_REGISTER_PROBE','S2_RF_PROBE','S3_RF_PROBE','C5_TUNE_PROBE']:
+        for flag in ['SAMPLE_RATE_PROBE','FILTER_REGISTER_PROBE','S2_RF_PROBE','S3_RF_PROBE','C5_TUNE_PROBE','C5_REPLAY_PROBE']:
             with self.subTest(flag=flag):
                 (self.build / 'CMakeCache.txt').write_text(flag+':BOOL=ON')
                 with self.assertRaisesRegex(ValueError, 'diagnostic'):

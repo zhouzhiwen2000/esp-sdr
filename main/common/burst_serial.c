@@ -204,3 +204,17 @@ bool IRAM_ATTR burst_serial_send(const void *data, size_t size) {
 #endif
     return true;
 }
+
+bool burst_serial_receive(void *data, size_t size) {
+    uint8_t *p = data;
+    int64_t deadline = transfer_deadline(size);
+    while (size) {
+        if (esp_timer_get_time() >= deadline) return false;
+        int received = read_port(active_port, p, size);
+        if (received < 0) return false;
+        if (!received) { vTaskDelay(1); continue; }
+        p += received;
+        size -= received;
+    }
+    return true;
+}

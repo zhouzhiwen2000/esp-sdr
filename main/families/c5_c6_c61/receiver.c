@@ -185,6 +185,10 @@ static bool capture(unsigned n,unsigned divider,unsigned format) {
     return send_bytes(h,strlen(h)) && send_bytes(IQ_BUFFER,bytes);
 }
 
+#if CONFIG_IDF_TARGET_ESP32C5
+#include "transmitter.h"
+#endif
+
 static void handle_command(char *line);
 
 void app_main(void) {
@@ -213,7 +217,12 @@ void app_main(void) {
     burst_serial_init();
     char line[128];int owner=-1;int64_t lease_deadline=0;
     for(;;) {
+#if CONFIG_IDF_TARGET_ESP32C5
+        replay_service();cw_service();
+        if(!replay_active && !cw_active && esp_timer_get_time()>=lease_deadline)owner=-1;
+#else
         if(esp_timer_get_time()>=lease_deadline)owner=-1;
+#endif
         int status=burst_serial_poll_line(line,sizeof(line));
         if(!status){vTaskDelay(1);continue;}
         int port=burst_serial_port();
@@ -227,6 +236,9 @@ void app_main(void) {
 }
 
 static void handle_command(char *line) {
+#if CONFIG_IDF_TARGET_ESP32C5
+    if(tx_command(line))return;
+#endif
     if(!strcmp(line,"RELEASE")){reply("OK\n");return;}
     if(!strcmp(line,"TRANSPORT?")) {
         char h[64];snprintf(h,sizeof(h),"TRANSPORT %s %u\n",
@@ -265,6 +277,9 @@ static void handle_command(char *line) {
 #endif
         else if(!strcmp(line,"CAPS")) {
             reply("CAPS UARTBAUD RXLIMITS GAIN HWAGC IQ8 SERIALLEASE"
+#if CONFIG_IDF_TARGET_ESP32C5
+                  " TX REPLAY CW"
+#endif
                   " TUNEEXT"
 #if !CONFIG_IDF_TARGET_ESP32C6
                   " LPF LPF12"
