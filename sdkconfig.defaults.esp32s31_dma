@@ -1,0 +1,4 @@
+# Apply after sdkconfig.defaults.esp32s31 and sdkconfig.defaults.esp32s31_eth.
+# Experimental board-specific adapter, guarded against unreviewed IDF changes.
+CONFIG_ESP_SDR_S31_DIRECT_TX=y
+CONFIG_ESP_SDR_S31_DMA_COPY=y

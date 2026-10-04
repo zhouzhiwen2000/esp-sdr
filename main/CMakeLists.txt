@@ -4,6 +4,10 @@ if(NOT IDF_TARGET IN_LIST esp_sdr_supported_targets)
 endif()
 
 option(SAMPLE_RATE_PROBE "Build volatile hardware sample-rate diagnostics (never package)" OFF)
+option(S31_DMA_PROBE "Build S31 DMA/PARLIO hardware diagnostics (never package)" OFF)
+if(S31_DMA_PROBE AND NOT IDF_TARGET STREQUAL "esp32s31")
+    message(FATAL_ERROR "S31_DMA_PROBE requires esp32s31")
+endif()
 
 set(target_dir "targets/${IDF_TARGET}")
 set(receiver "${target_dir}/receiver.c")
@@ -31,6 +35,15 @@ elseif(IDF_TARGET STREQUAL "esp32c5" OR IDF_TARGET STREQUAL "esp32c6" OR IDF_TAR
     endif()
 endif()
 
+if(IDF_TARGET STREQUAL "esp32s31")
+    # IDF's early dependency pass does not inherit project cache options.
+    list(APPEND dependencies esp_driver_dma esp_driver_gpio esp_driver_parlio esp_eth esp_netif esp_psram)
+    list(APPEND probes S31_DMA_PROBE)
+    if(CONFIG_ESP_SDR_S31_ETHERNET)
+        list(APPEND sources "targets/esp32s31/ethernet_rx.c")
+    endif()
+endif()
+
 if(IDF_TARGET STREQUAL "esp32c61" OR IDF_TARGET STREQUAL "esp32s31")
     list(APPEND sources "common/burst_gain_table.c")
 endif()
@@ -38,6 +51,11 @@ endif()
 idf_component_register(SRCS "${receiver}" ${sources}
     PRIV_INCLUDE_DIRS "common" "${target_dir}" "diagnostics"
     REQUIRES ${dependencies})
+
+if(CONFIG_ESP_SDR_S31_DIRECT_TX)
+    include("${CMAKE_CURRENT_LIST_DIR}/targets/esp32s31/emac_direct.cmake")
+    include("${CMAKE_CURRENT_LIST_DIR}/targets/esp32s31/parlio_dma.cmake")
+endif()
 
 # Keep the linker guard beside the backend whose SRAM aperture it protects.
 target_link_options(${COMPONENT_LIB} INTERFACE

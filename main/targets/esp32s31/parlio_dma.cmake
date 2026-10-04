@@ -1,0 +1,33 @@
+# Keep PARLIO ring nodes equal to the 4032-byte capture frames. The pinned
+# driver uses 4092-byte nodes on uncached SRAM, splitting EOF frames across
+# descriptors and creating very short completion intervals.
+idf_component_get_property(parlio_lib esp_driver_parlio COMPONENT_LIB)
+idf_component_get_property(parlio_dir esp_driver_parlio COMPONENT_DIR)
+set(parlio_source "${parlio_dir}/src/parlio_rx.c")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${parlio_source}")
+file(SHA256 "${parlio_source}" parlio_sha)
+if(NOT parlio_sha STREQUAL "812640dd816a70add7c0a8c6083aeaa72b9c98318f75d877c98f5440c925ad59")
+    message(FATAL_ERROR "S31 capture requires the validated PARLIO driver; review node alignment before updating IDF")
+endif()
+file(READ "${parlio_source}" parlio_content)
+string(REPLACE "#define PARLIO_MAX_ALIGNED_DMA_BUF_SIZE     DMA_DESCRIPTOR_BUFFER_MAX_SIZE_4B_ALIGNED"
+    "#define PARLIO_MAX_ALIGNED_DMA_BUF_SIZE     DMA_DESCRIPTOR_BUFFER_MAX_SIZE_64B_ALIGNED"
+    parlio_content "${parlio_content}")
+set(parlio_adapter "${CMAKE_CURRENT_BINARY_DIR}/s31_parlio/parlio_rx.c")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/s31_parlio")
+file(WRITE "${parlio_adapter}" "${parlio_content}")
+target_include_directories(${parlio_lib} PRIVATE "${parlio_dir}/src")
+get_target_property(parlio_sources ${parlio_lib} SOURCES)
+set(parlio_replaced FALSE)
+foreach(src IN LISTS parlio_sources)
+    if(src MATCHES "(^|/)parlio_rx\\.c$")
+        list(REMOVE_ITEM parlio_sources "${src}")
+        list(APPEND parlio_sources "${parlio_adapter}")
+        set(parlio_replaced TRUE)
+        break()
+    endif()
+endforeach()
+if(NOT parlio_replaced)
+    message(FATAL_ERROR "S31 capture could not find the IDF PARLIO source")
+endif()
+set_property(TARGET ${parlio_lib} PROPERTY SOURCES "${parlio_sources}")

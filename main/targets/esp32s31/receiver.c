@@ -25,6 +25,9 @@
 #include "esp_phy_cert_test.h"
 #include "driver/usb_serial_jtag.h"
 #include "heap_memory_layout.h"
+#if CONFIG_ESP_SDR_S31_ETHERNET
+#include "ethernet_rx.h"
+#endif
 
 /* The S31 dump aperture is fixed. Reserve its lower guard and ROM-owned top
  * as well; neither heap nor linker sections may use this memory. */
@@ -73,12 +76,18 @@ extern void phy_pbus_xpd_tx_off(void);
 extern void phy_set_rxclk_en(int);
 
 static void reply(const char *fmt, ...) {
-    char text[256];
+    char text[1024];
     va_list ap;
     va_start(ap, fmt);
     int length = vsnprintf(text, sizeof(text), fmt, ap);
     va_end(ap);
-    if (length > 0) burst_serial_send(text, length < sizeof(text) ? length : sizeof(text)-1);
+    if (length > 0) {
+        size_t count=length < sizeof(text) ? length : sizeof(text)-1;
+#if CONFIG_ESP_SDR_S31_ETHERNET
+        if(s31_net_reply(text,count)) return;
+#endif
+        burst_serial_send(text,count);
+    }
 }
 
 extern void phy_chip_set_chan(unsigned, unsigned);
@@ -232,6 +241,10 @@ static void apply_gain(void) {
     phy_force_rx_gain(!hardware_agc, hardware_agc ? 0 : gain_code);
 }
 
+#ifdef S31_DMA_PROBE
+#include "s31_dma_probe.h"
+#endif
+
 static bool capture_rate(unsigned n, unsigned rate, unsigned format) {
     /* Hardware dividers verified by capture-duration slopes; no software decimation. */
     static const unsigned dividers[]={0,1,3,5,7,9};
@@ -245,8 +258,20 @@ static void command(const char *line) {
     unsigned n, rate, repeats, format;
     uint64_t nonce;
     char extra;
+#if CONFIG_ESP_SDR_S31_ETHERNET
+    if(s31_net_command(line,frequency_mhz,reply)) return;
+    if(s31_net_active() && strcmp(line,"INFO") && strcmp(line,"CAPS") &&
+       strcmp(line,"GAIN?") && strcmp(line,"LIMITS?") && strcmp(line,"RANGE?") &&
+       strcmp(line,"TRANSPORT?") && strcmp(line,"LPF?") && strncmp(line,"SYNC ",5)) {
+        reply("ERR stream_active\n");return;
+    }
+#endif
     if (!strcmp(line, "INFO")) reply("S31SDR 6 burst 16380\n");
-    else if (!strcmp(line, "CAPS")) reply("CAPS UARTBAUD RXLIMITS SERIALLEASE DUALSERIAL TUNEEXT RX40 LPFANA GAIN HWAGC IQ8\n");
+    else if (!strcmp(line, "CAPS")) reply("CAPS UARTBAUD RXLIMITS SERIALLEASE DUALSERIAL TUNEEXT RX40 LPFANA GAIN HWAGC IQ8"
+#if CONFIG_ESP_SDR_S31_ETHERNET
+        " GIGE PARLIO S31Q2"
+#endif
+        "\n");
     else if (sscanf(line, "BANDWIDTH %u %c", &n, &extra)==1 &&
              (!n || (n>=RX_BANDWIDTH_MIN && n<=RX_BANDWIDTH_MAX))) {
         rx_filter=rx_bandwidth_dcap(n); reply("OK\n");
@@ -281,7 +306,11 @@ static void command(const char *line) {
             vTaskDelay(1);
         }
         reply("END\n");
-    } else reply("ERR command\n");
+    }
+#ifdef S31_DMA_PROBE
+    else if (s31_dma_probe_command(line)) {}
+#endif
+    else reply("ERR command\n");
 }
 
 void app_main(void) {
@@ -325,11 +354,19 @@ void app_main(void) {
     (void)usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(100));
     ESP_ERROR_CHECK(usb_serial_jtag_driver_uninstall());
     burst_serial_init();
+#if CONFIG_ESP_SDR_S31_ETHERNET
+    (void)s31_net_init();
+    /* Keep control/heartbeat responsive while the TCP sender is runnable. */
+    vTaskPrioritySet(NULL,18);
+#endif
     char line[128];
     int owner=-1;
     int64_t lease_deadline=0;
     for(;;) {
         if(esp_timer_get_time()>=lease_deadline)owner=-1;
+#if CONFIG_ESP_SDR_S31_ETHERNET
+        s31_net_poll(command,owner<0);
+#endif
         int status=burst_serial_poll_line(line,sizeof(line));
         if(!status){vTaskDelay(1);continue;}
         int port=burst_serial_port();

@@ -1,5 +1,33 @@
 menu "ESP-SDR transport"
 
+    config ESP_SDR_S31_DMA_COPY
+        bool "Experimental S31 SRAM DMA staging"
+        depends on ESP_SDR_S31_DIRECT_TX
+        default n
+        help
+            Use a preallocated GDMA channel pair to move IQ from the PARLIO
+            ring into stable SRAM buffers. CPU prepares packet headers.
+
+    config ESP_SDR_S31_DIRECT_TX
+        bool "Experimental S31 direct DMA Ethernet TX"
+        depends on ESP_SDR_S31_ETHERNET
+        default n
+        help
+            Borrow IQ buffers for MAC DMA and drain before reusing each buffer,
+            avoiding the driver payload copy. Requires the pinned IDF driver.
+            A transmitter that does not release buffers within 100 ms resets
+            the board to prevent DMA from accessing freed or reused memory.
+
+    config ESP_SDR_S31_ETHERNET
+        bool "S31 Function CoreBoard-1 continuous Ethernet receiver"
+        depends on IDF_TARGET_ESP32S31
+        default n
+        help
+            Enable the board's YT8531 Gigabit Ethernet interface and PARLIO
+            circular-DMA receiver. Requires unused GPIO header pins listed
+            in targets/esp32s31/ethernet_rx.c. USB/UART burst RX stays available
+            while streaming is stopped. Direct-link IP: 169.254.9.36/16.
+
     config ESP_SDR_UART_ENABLED
         bool "Burst UART0 I/Q transport" if !IDF_TARGET_ESP32
         depends on IDF_TARGET_ESP32C5 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32C61 || IDF_TARGET_ESP32C6 || IDF_TARGET_ESP32S31

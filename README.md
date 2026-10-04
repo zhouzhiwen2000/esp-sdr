@@ -12,7 +12,8 @@ With the help of LLMs, we discovered an undocumented debug path that bypasses
 the chip's fixed-function Wi-Fi modem. This gives software access to raw
 radio samples, called **I/Q samples**, from the built-in receiver. ESP-SDR
 currently captures short bursts of these samples and sends them to your
-computer over USB or UART for analysis.
+computer over USB or UART for analysis. The ESP32-S31 Function CoreBoard-1
+also has an optional [continuous Gigabit Ethernet receiver and host spectrum viewer](docs/s31-ethernet.md).
 
 <br clear="all">
 
@@ -114,9 +115,10 @@ Substitute the target and paths for your chip. S31 also requires `idf.py --previ
 
 The application component and UART configuration stay in `main/`. Target SDK
 defaults stay at the repository root for the build tools and ESP-IDF defaults
-lookup. The root firmware uses the burst protocol over UART/native USB.
-Build the Ethernet and vendor USB streaming application from
-`legacy/transceiver/` with its own SDK, PHY dependencies and board configuration.
+lookup. The default root firmware uses the burst protocol over UART/native USB.
+For S31 Ethernet reception, use the [dedicated configuration and host application](docs/s31-ethernet.md).
+The full Ethernet/vendor USB transceiver in `legacy/transceiver/` uses its own
+SDK, PHY dependencies and board configuration.
 
 Run `python3 -m unittest discover -s tests` for host checks. Build every profile
 with `tools/build_firmware.py` and its pinned SDK before distributing a change;
@@ -145,7 +147,7 @@ validated.
 - **S3:** 13–69 MHz bandwidth.
 - **S31:** 80/40/20/10/8/4 MS/s; 13–54 MHz bandwidth.
 
-Captures have gaps; nominal sample rates exceed sustained serial throughput.
+Serial burst captures have gaps; nominal sample rates exceed sustained serial throughput.
 Gain and power are uncalibrated. Extended tuning does not guarantee PLL lock
 or reception; the viewer uses the ISM-band warning described above.
 
